@@ -21,24 +21,97 @@ const MAX_PER_DAY   = 3;                            // Tối đa 3 key/ngày/use
 // ═══════════════════════════════════════════════════════════
 // FIREBASE ADMIN SDK
 // ═══════════════════════════════════════════════════════════
+// Hỗ trợ 2 cách cấu hình:
+//   Cách 1 (KHUYẾN NGHỊ): Paste toàn bộ nội dung file JSON service account
+//                          vào biến FIREBASE_SERVICE_ACCOUNT_JSON
+//   Cách 2 (cũ):           Dùng 3 biến riêng lẻ FIREBASE_PROJECT_ID,
+//                          FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY
+// ═══════════════════════════════════════════════════════════
 let db;
-try {
-    const firebaseConfig = {
-        credential: admin.credential.cert({
-            type:         'service_account',
-            project_id:   process.env.FIREBASE_PROJECT_ID,
-            client_email: process.env.FIREBASE_CLIENT_EMAIL,
-            private_key:  (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-        }),
-        databaseURL: process.env.FIREBASE_DATABASE_URL,
-    };
-    if (!admin.apps.length) admin.initializeApp(firebaseConfig);
-    db = admin.database();
-    console.log('[Firebase] Kết nối thành công');
-} catch (e) {
-    console.error('[Firebase] Lỗi khởi tạo:', e.message);
-    process.exit(1);
+
+function initFirebase() {
+    let serviceAccount;
+
+    // --- Cách 1: FIREBASE_SERVICE_ACCOUNT_JSON (ưu tiên) ---
+    if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+        try {
+            serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+            console.log('[Firebase] Dùng FIREBASE_SERVICE_ACCOUNT_JSON');
+        } catch (parseErr) {
+            console.error('[Firebase] FIREBASE_SERVICE_ACCOUNT_JSON không phải JSON hợp lệ:', parseErr.message);
+            console.error('[Firebase] Hãy chắc chắn copy NGUYÊN file JSON, không chỉnh sửa gì.');
+            process.exit(1);
+        }
+    }
+
+    // --- Cách 2: 3 biến riêng lẻ ---
+    else {
+        const projectId   = process.env.FIREBASE_PROJECT_ID;
+        const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+        let   privateKey  = process.env.FIREBASE_PRIVATE_KEY || '';
+
+        // Kiểm tra biến bắt buộc
+        const missing = [];
+        if (!projectId)   missing.push('FIREBASE_PROJECT_ID');
+        if (!clientEmail) missing.push('FIREBASE_CLIENT_EMAIL');
+        if (!privateKey)  missing.push('FIREBASE_PRIVATE_KEY');
+        if (missing.length > 0) {
+            console.error('[Firebase] Thiếu các biến môi trường sau:');
+            missing.forEach(v => console.error(`  ❌ ${v}`));
+            console.error('\n👉 Giải pháp dễ nhất: Thêm biến FIREBASE_SERVICE_ACCOUNT_JSON');
+            console.error('   và paste toàn bộ nội dung file JSON service account vào đó.');
+            process.exit(1);
+        }
+
+        // Xử lý private key: chấp nhận cả literal \\n lẫn newline thật
+        privateKey = privateKey
+            .replace(/\\n/g, '\n')   // literal \n → newline thật
+            .replace(/\r\n/g, '\n'); // Windows line endings
+
+        // Nếu không có BEGIN PRIVATE KEY → sai format
+        if (!privateKey.includes('BEGIN')) {
+            console.error('[Firebase] FIREBASE_PRIVATE_KEY không hợp lệ.');
+            console.error('   Phải chứa: -----BEGIN RSA PRIVATE KEY----- ... -----END RSA PRIVATE KEY-----');
+            console.error('   👉 Khuyến nghị: Dùng FIREBASE_SERVICE_ACCOUNT_JSON thay thế.');
+            process.exit(1);
+        }
+
+        serviceAccount = {
+            type:          'service_account',
+            project_id:    projectId,
+            client_email:  clientEmail,
+            private_key:   privateKey,
+        };
+        console.log('[Firebase] Dùng biến riêng lẻ, project_id =', projectId);
+    }
+
+    // Kiểm tra databaseURL
+    const databaseURL = process.env.FIREBASE_DATABASE_URL;
+    if (!databaseURL) {
+        console.error('[Firebase] Thiếu FIREBASE_DATABASE_URL');
+        console.error('   Ví dụ: https://TEN-PROJECT-default-rtdb.asia-southeast1.firebasedatabase.app');
+        process.exit(1);
+    }
+
+    try {
+        if (!admin.apps.length) {
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount),
+                databaseURL,
+            });
+        }
+        const dbRef = admin.database();
+        console.log('[Firebase] ✅ Kết nối thành công! Project:', serviceAccount.project_id);
+        return dbRef;
+    } catch (e) {
+        console.error('[Firebase] Lỗi initializeApp:', e.message);
+        console.error('[Firebase] serviceAccount.project_id =', serviceAccount.project_id);
+        console.error('[Firebase] serviceAccount.client_email =', serviceAccount.client_email);
+        process.exit(1);
+    }
 }
+
+db = initFirebase();
 
 // ═══════════════════════════════════════════════════════════
 // ĐỌC DANH SÁCH LINK TỪ FILE
