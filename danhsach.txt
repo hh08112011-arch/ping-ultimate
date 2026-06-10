@@ -2,9 +2,5 @@
 # Mỗi dòng 1 link - bắt đầu bằng # là comment (bỏ qua)
 # Thêm link Link4M của bạn vào đây
 
-https://link4m.co/XXXXXXX1
-https://link4m.co/XXXXXXX2
-https://link4m.co/XXXXXXX3
-https://link4m.co/XXXXXXX4
-https://link4m.co/XXXXXXX5
-https://link4m.co/XXXXXXX6
+https://link4m.net/Ihhw3
+
