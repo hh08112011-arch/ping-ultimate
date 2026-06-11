@@ -19,68 +19,38 @@ const SESSION_TTL   = 30 * 60 * 1000;              // Session hết hạn sau 30
 const MAX_PER_DAY   = 3;                            // Tối đa 3 key/ngày/user
 
 // ═══════════════════════════════════════════════════════════
-// FIREBASE ADMIN SDK (ĐÃ CẬP NHẬT ĐỂ ĐỌC ĐÚNG BIẾN RENDER)
-// ═══════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════
-// FIREBASE ADMIN SDK (DÙNG SECRET FILES - CHẮC CHẮN 100% THÀNH CÔNG)
-// ═══════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════
 // FIREBASE ADMIN SDK (CHÉP TRỰC TIẾP JSON - 100% THÀNH CÔNG)
 // ═══════════════════════════════════════════════════════════
 let db;
 try {
-    // 👇 BẠN HÃY XÓA PHẦN BÊN TRONG CỦA BIẾN NÀY VÀ DÁN TOÀN BỘ 
-    // NỘI DUNG FILE .JSON CỦA FIREBASE VÀO ĐÂY (Giữ nguyên ngoặc nhọn {})
     const serviceAccount = {
-  "type": "service_account",
-  "project_id": "ping-ultimate",
-  "private_key_id": "2cf4d8a63d8d40a73375ac8f51a39be3c1a773df",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCmu1R+7Qt53LEn\n8VH/Byk7U8V7jkCu0Tw1Z95yeclygcDLnwH559fFC80yamU+1XW3YKnPvT+Ixd8k\ncaREEfGZDfFTDPU6/FYVKZdX6oW4UXZEUpXs4GBI3u2kmhKj3EMr8ahUggKUD+R3\nyAkxBnZhwAltWo8tgiyDFkgcim5uj5Q4WSQBG6TDpr9r/bS7oVYGIYU9qyRhP/PA\nNsVdUigqZ9BHdsxyxqmcBuc9tEBX2/CzQ+XLZ6wCgBvnyecIQCHUFGcmrPJfH5z3\nP4rSLlbsq+b9j+zaVyxRfIO6La4jTv6dadrfu3C6V0/xZAPFs9GgHqtZawPc3a2O\nGW4kiGc7AgMBAAECggEARJ8jFp4/M+eV7iePJNRwrt86jzCsBIdPLXfTgPAI7hzj\nGasW6CD4mDvUN2S8yNCYA2JAYaS1Knit71TqU63C7shjQ1g48g766vjUNjXq1UKJ\n13LaC8UJO9SsoCtdcp1r9AEg068ymne0A2yMA+ZyAKdF+gDknslNwqIACecbrlq1\nO73XlVNGu9M45KUiROVJxHsYPQ3eqbrlalYL+UlFYBPNJfkBfC6TtfxqDjRquls2\nUydjJJSY+XquGyWm+/W9aMO/o9TbqAZcaHHu1an3yn0LuNRmL2WUC0o7FeRSlVjJ\nRMoPvKfmXnfmoc7zEeDnvouiBEUnR6fxTwEqeW2UWQKBgQDbTTDOoVJIcXk6yp1z\nkHCEVyLoEQrGj3cke1kXFkTlzNpd3tY0lw1nO1Lc6Ej8sMXL9OnyC1lHnk2N0yah\nGUCWl6AD7gu94WJCGaD94ws+sJvaztABzc6jntiRPoxXYCLKT5PVO5l1fgwbkxCY\n5SHAAIPEbKmTHwO2shImalZipQKBgQDCohEdkM8Lj7VMcfCahDXyiLWVZll4uuzC\nk86157ZwZLKSzbRn78Sci89iKq+oJ50i+/gxO6jcqQd/luwzWC4G9KdoPvSY+5Ih\nArTyUg3K6EcmcgBmUdREi1059VHRrHKhh7pSh7rOBspkYtQbU1XtmdcqFXhkhOAA\nOkKCQKTcXwKBgQCKCrPPTYLC8RKzbDjiNqhs1YC2fYu/4yzG/RHeU3k5AdLuxccm\nQXMBaTlGrrzKuuc29EqSvowLZd1BiglF3ORoJrdl4eDoPEgifYl2ZwV8B6WDfS04\nBXmuSt3dx3aFxZEAskjHL4XwjFBIxzDqXUj6WBiZeyDe5+XpiXudTNBltQKBgDBn\ntBABUqzSacmAUNFs7inKfDaSxM+01Wsy7WbqIMJlGNBP3n028VPppYMJkLQmXfs0\nZS6BYua2FwpRU58VYCUUtYnElnpxno8dKDlX1NxQ1lkmYxkPYtZFPsNKUrXtyHiJ\n0/nwjbHtmGpM9elx2V4FM7DgtBdzwG3uD1prj1TLAoGAfTNvLLNl3mb3aTL4j0rg\nNE0xqVublb08MCmZzajj8lY1dnhxV2jcSrXhcyOhJkXYVF634hR7ykuEJeaNRPVK\n5f6yWF572dX4du8zZvvUdZtWa4PVh8lPESnT45kQxiEP4vRb//s2woPfnEntSE9j\nOD6tI89kaats7D0L1xc9RSg=\n-----END PRIVATE KEY-----\n",
-  "client_email": "firebase-adminsdk-fbsvc@ping-ultimate.iam.gserviceaccount.com",
-  "client_id": "117299772180066447725",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40ping-ultimate.iam.gserviceaccount.com",
-  "universe_domain": "googleapis.com"
-};
-
-    // 👆 KẾT THÚC PHẦN DÁN JSON
+        "type": "service_account",
+        "project_id": "ping-ultimate",
+        "private_key_id": "2cf4d8a63d8d40a73375ac8f51a39be3c1a773df",
+        "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCmu1R+7Qt53LEn\n8VH/Byk7U8V7jkCu0Tw1Z95yeclygcDLnwH559fFC80yamU+1XW3YKnPvT+Ixd8k\ncaREEfGZDfFTDPU6/FYVKZdX6oW4UXZEUpXs4GBI3u2kmhKj3EMr8ahUggKUD+R3\nyAkxBnZhwAltWo8tgiyDFkgcim5uj5Q4WSQBG6TDpr9r/bS7oVYGIYU9qyRhP/PA\nNsVdUigqZ9BHdsxyxqmcBuc9tEBX2/CzQ+XLZ6wCgBvnyecIQCHUFGcmrPJfH5z3\nP4rSLlbsq+b9j+zaVyxRfIO6La4jTv6dadrfu3C6V0/xZAPFs9GgHqtZawPc3a2O\nGW4kiGc7AgMBAAECggEARJ8jFp4/M+eV7iePJNRwrt86jzCsBIdPLXfTgPAI7hzj\nGasW6CD4mDvUN2S8yNCYA2JAYaS1Knit71TqU63C7shjQ1g48g766vjUNjXq1UKJ\n13LaC8UJO9SsoCtdcp1r9AEg068ymne0A2yMA+ZyAKdF+gDknslNwqIACecbrlq1\nO73XlVNGu9M45KUiROVJxHsYPQ3eqbrlalYL+UlFYBPNJfkBfC6TtfxqDjRquls2\nUydjJJSY+XquGyWm+/W9aMO/o9TbqAZcaHHu1an3yn0LuNRmL2WUC0o7FeRSlVjJ\nRMoPvKfmXnfmoc7zEeDnvouiBEUnR6fxTwEqeW2UWQKBgQDbTTDOoVJIcXk6yp1z\nkHCEVyLoEQrGj3cke1kXFkTlzNpd3tY0lw1nO1Lc6Ej8sMXL9OnyC1lHnk2N0yah\nGUCWl6AD7gu94WJCGaD94ws+sJvaztABzc6jntiRPoxXYCLKT5PVO5l1fgwbkxCY\n5SHAAIPEbKmTHwO2shImalZipQKBgQDCohEdkM8Lj7VMcfCahDXyiLWVZll4uuzC\nk86157ZwZLKSzbRn78Sci89iKq+oJ50i+/gxO6jcqQd/luwzWC4G9KdoPvSY+5Ih\nArTyUg3K6EcmcgBmUdREi1059VHRrHKhh7pSh7rOBspkYtQbU1XtmdcqFXhkhOAA\nOkKCQKTcXwKBgQCKCrPPTYLC8RKzbDjiNqhs1YC2fYu/4yzG/RHeU3k5AdLuxccm\nQXMBaTlGrrzKuuc29EqSvowLZd1BiglF3ORoJrdl4eDoPEgifYl2ZwV8B6WDfS04\nBXmuSt3dx3aFxZEAskjHL4XwjFBIxzDqXUj6WBiZeyDe5+XpiXudTNBltQKBgDBn\ntBABUqzSacmAUNFs7inKfDaSxM+01Wsy7WbqIMJlGNBP3n028VPppYMJkLQmXfs0\nZS6BYua2FwpRU58VYCUUtYnElnpxno8dKDlX1NxQ1lkmYxkPYtZFPsNKUrXtyHiJ\n0/nwjbHtmGpM9elx2V4FM7DgtBdzwG3uD1prj1TLAoGAfTNvLLNl3mb3aTL4j0rg\nNE0xqVublb08MCmZzajj8lY1dnhxV2jcSrXhcyOhJkXYVF634hR7ykuEJeaNRPVK\n5f6yWF572dX4du8zZvvUdZtWa4PVh8lPESnT45kQxiEP4vRb//s2woPfnEntSE9j\nOD6tI89kaats7D0L1xc9RSg=\n-----END PRIVATE KEY-----\n",
+        "client_email": "firebase-adminsdk-fbsvc@ping-ultimate.iam.gserviceaccount.com",
+        "client_id": "117299772180066447725",
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40ping-ultimate.iam.gserviceaccount.com",
+        "universe_domain": "googleapis.com"
+    };
 
     const firebaseConfig = {
         credential: admin.credential.cert(serviceAccount),
-        // Nhớ giữ biến FIREBASE_DATABASE_URL trên Render nhé
         databaseURL: process.env.FIREBASE_DATABASE_URL, 
     };
 
     if (!admin.apps.length) admin.initializeApp(firebaseConfig);
     db = admin.database();
     
-    // Test thử gửi yêu cầu lên Firebase để chốt hạ 100%
     db.ref('.info/connected').once('value')
         .then(() => console.log('[Firebase] ✅ ĐÃ KẾT NỐI VÀ XÁC THỰC THÀNH CÔNG!'))
-        .catch(err => console.error('[Firebase] ❌ Lỗi:', err));
+        .catch(err => console.error('[Firebase] ❌ Lỗi xác thực:', err));
 
 } catch (e) {
-    console.error('[Firebase] ❌ Lỗi khởi tạo:', e.message);
-    process.exit(1);
-}
-
-    const firebaseConfig = {
-        credential: admin.credential.cert(serviceAccount),
-        databaseURL: process.env.FIREBASE_DATABASE_URL,
-    };
-
-    if (!admin.apps.length) admin.initializeApp(firebaseConfig);
-    db = admin.database();
-    
-    // Ping thử lên máy chủ Google để xác thực 100% chữ ký hợp lệ
-    db.ref('.info/connected').once('value')
-        .then(() => console.log('[Firebase] ✅ XÁC THỰC CHỮ KÝ VÀ KẾT NỐI THÀNH CÔNG THỰC SỰ!'))
-        .catch(err => console.error('[Firebase] ❌ Xác thực thất bại:', err.message));
-
-} catch (e) {
-    console.error('[Firebase] ❌ Lỗi khởi tạo (Hãy kiểm tra đã tạo file firebase-key.json trong Secret Files chưa nhé):', e.message);
+    console.error('[Firebase] ❌ Lỗi cú pháp khi khởi tạo:', e.message);
     process.exit(1);
 }
 
@@ -105,7 +75,7 @@ function loadLinks() {
 // SINH KEY NGẪU NHIÊN
 // ═══════════════════════════════════════════════════════════
 function generateKey() {
-    const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'; // Bỏ I, O
+    const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'; 
     let suffix = '';
     for (let i = 0; i < 12; i++) {
         suffix += CHARS[Math.floor(Math.random() * CHARS.length)];
@@ -113,9 +83,6 @@ function generateKey() {
     return 'PING-' + suffix;
 }
 
-// ═══════════════════════════════════════════════════════════
-// HASH LINK (để track link đã vượt)
-// ═══════════════════════════════════════════════════════════
 function hashLink(url) {
     return crypto.createHash('md5').update(url).digest('hex').slice(0, 12);
 }
@@ -169,13 +136,11 @@ async function checkCooldown(telegramId, type) {
     const user = await getUser(telegramId);
     const now  = Date.now();
 
-    // Kiểm tra key hiện tại còn hạn không
     if (user.activeKey && user.activeKeyExpiry && now < user.activeKeyExpiry) {
         const remaining = Math.ceil((user.activeKeyExpiry - now) / 3600000);
         return { blocked: true, reason: `Bạn còn key đang hoạt động (hết hạn sau ~${remaining} giờ). Vui lòng đợi key cũ hết hạn!` };
     }
 
-    // Kiểm tra giới hạn số key/ngày
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const keyHistory = Object.values(user.keyHistory || {});
@@ -184,13 +149,11 @@ async function checkCooldown(telegramId, type) {
         return { blocked: true, reason: `Bạn đã nhận đủ ${MAX_PER_DAY} key hôm nay. Quay lại vào 00:00!` };
     }
 
-    // Kiểm tra session đang pending
     if (user.pendingSession) {
         const sess = await getSession(user.pendingSession);
         if (sess && !sess.keyGenerated && (Date.now() - sess.createdAt) < SESSION_TTL) {
             return { blocked: true, reason: 'Bạn đang có phiên chưa hoàn thành. Vui lòng hoàn tất link đã được gửi hoặc chờ 30 phút!', pendingSession: sess };
         }
-        // Session cũ đã hết hạn → xóa
         await db.ref(`bot_sessions/${user.pendingSession}`).remove();
         await db.ref(`bot_users/${telegramId}/pendingSession`).remove();
     }
@@ -198,17 +161,12 @@ async function checkCooldown(telegramId, type) {
     return { blocked: false };
 }
 
-// ═══════════════════════════════════════════════════════════
-// GỬI KEY QUA BOT SAU KHI XÁC NHẬN XONG
-// ═══════════════════════════════════════════════════════════
 async function issueKey(telegramId, type, sessionToken) {
     const hours   = KEY_HOURS[type];
     const keyCode = generateKey();
 
-    // Lưu key vào Firebase (cùng cấu trúc admin panel)
     await saveKey(keyCode, hours);
 
-    // Ghi lại lịch sử user
     const expiryApprox = Date.now() + hours * 3600000;
     await db.ref(`bot_users/${telegramId}`).update({
         activeKey:        keyCode,
@@ -217,7 +175,6 @@ async function issueKey(telegramId, type, sessionToken) {
         [`keyHistory/${Date.now()}`]: Date.now(),
     });
 
-    // Đánh dấu session đã cấp key
     await db.ref(`bot_sessions/${sessionToken}`).update({ keyGenerated: true, keyCode });
 
     return { keyCode, hours };
@@ -230,7 +187,6 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Trang chủ (healthcheck cho Render)
 app.get('/', (req, res) => {
     res.send(`
     <html><head><meta charset="utf-8"><title>Ping Bot</title>
@@ -241,9 +197,6 @@ app.get('/', (req, res) => {
     `);
 });
 
-// ─────────────────────────────────────────────────────────
-// /go?t=TOKEN&l=INDEX — Proxy redirect đến Link4M
-// ─────────────────────────────────────────────────────────
 app.get('/go', async (req, res) => {
     const { t: token, l: indexStr } = req.query;
     if (!token || indexStr === undefined) return res.status(400).send('Thiếu tham số.');
@@ -259,20 +212,12 @@ app.get('/go', async (req, res) => {
     const link4mUrl = session.links[index];
     if (!link4mUrl) return res.status(400).send('Link không hợp lệ.');
 
-    // Tạo callback URL sau khi vượt Link4M xong
     const verifyUrl = encodeURIComponent(`${APP_URL}/verify?t=${token}&l=${index}`);
-
-    // Redirect đến Link4M, truyền to= để Link4M chuyển về /verify sau khi xong
-    const finalUrl = link4mUrl.includes('?')
-        ? `${link4mUrl}&to=${verifyUrl}`
-        : `${link4mUrl}?to=${verifyUrl}`;
+    const finalUrl = link4mUrl.includes('?') ? `${link4mUrl}&to=${verifyUrl}` : `${link4mUrl}?to=${verifyUrl}`;
 
     return res.redirect(302, finalUrl);
 });
 
-// ─────────────────────────────────────────────────────────
-// /verify?t=TOKEN&l=INDEX — Xác nhận hoàn thành Link4M
-// ─────────────────────────────────────────────────────────
 app.get('/verify', async (req, res) => {
     const { t: token, l: indexStr } = req.query;
 
@@ -424,22 +369,17 @@ bot.command('status', async (ctx) => {
     }
 });
 
-// ─────────────────────────────────────────────────────────
-// Hàm xử lý chung cho /12h và /24h (ĐÃ BỌC TRY-CATCH AN TOÀN)
-// ─────────────────────────────────────────────────────────
 async function handleKeyRequest(ctx, type) {
     try {
         const uid      = ctx.from.id;
         const allLinks = loadLinks();
 
         console.log(`[Bot] Nhận yêu cầu /${type} từ User ID: ${uid}`);
-        console.log(`[Bot] Tổng số link đọc được từ file: ${allLinks.length}`);
-
+        
         if (allLinks.length === 0) {
             return ctx.reply('⚠️ Danh sách link trống. Vui lòng liên hệ admin!');
         }
 
-        // Kiểm tra cooldown + chống gian lận
         const check = await checkCooldown(uid, type);
         if (check.blocked) {
             return ctx.reply(`🚫 ${check.reason}`);
@@ -449,11 +389,8 @@ async function handleKeyRequest(ctx, type) {
         const hours   = KEY_HOURS[type];
         const user    = await getUser(uid);
 
-        // Lọc link chưa từng vượt
         const completedLinks = user.completed_links || {};
         const unvisited = allLinks.filter(url => !completedLinks[hashLink(url)]);
-
-        console.log(`[Bot] Số lượng link User chưa vượt: ${unvisited.length}/${allLinks.length}`);
 
         if (unvisited.length < needed) {
             return ctx.reply(
@@ -462,15 +399,12 @@ async function handleKeyRequest(ctx, type) {
             );
         }
 
-        // Chọn ngẫu nhiên link từ danh sách chưa vượt
         const shuffled  = [...unvisited].sort(() => Math.random() - 0.5);
         const chosen    = shuffled.slice(0, needed);
 
-        // Tạo session token
         const token = crypto.randomBytes(16).toString('hex');
         await createSession(token, uid, type, chosen);
 
-        // Lưu pending session vào user
         await db.ref(`bot_users/${uid}/pendingSession`).set(token);
 
         let msg = `🔑 *Nhận Key ${type.toUpperCase()} — ${hours} Giờ*\n\n`;
@@ -482,14 +416,14 @@ async function handleKeyRequest(ctx, type) {
         });
 
         msg += `⏰ Phiên hết hạn sau *30 phút*.\n`;
-        msg += `✅ Sau khi vượt xong tất cả link, key sẽ tự động gửi về đây.\n\n`;
+        msg += `✅ Sau khi vượt xong tất cả link, key tự động gửi về đây.\n\n`;
         msg += `_Lưu ý: Mỗi link chỉ được vượt 1 lần._`;
 
         await ctx.reply(msg, { parse_mode: 'Markdown' });
 
     } catch (error) {
         console.error(`❌ [Lỗi Lệnh /${type}]:`, error.message);
-        ctx.reply('❌ Hệ thống gặp sự cố khi xử lý dữ liệu Firebase. Vui lòng thử lại sau hoặc báo Admin!');
+        ctx.reply('❌ Hệ thống gặp sự cố. Vui lòng thử lại sau hoặc báo Admin!');
     }
 }
 
@@ -497,13 +431,11 @@ bot.command('12h', (ctx) => handleKeyRequest(ctx, '12h'));
 bot.command('24h', (ctx) => handleKeyRequest(ctx, '24h'));
 
 bot.on('text', (ctx) => {
-    ctx.reply(
-        '❓ Lệnh không được nhận ra.\n\nDùng:\n🔹 /12h — Key 12 giờ\n🔹 /24h — Key 24 giờ\n🔹 /status — Kiểm tra key'
-    );
+    ctx.reply('❓ Lệnh không được nhận ra.\n\nDùng:\n🔹 /12h — Key 12 giờ\n🔹 /24h — Key 24 giờ\n🔹 /status — Kiểm tra key');
 });
 
 // ═══════════════════════════════════════════════════════════
-// CƠ CHẾ GIỮ SERVER LUÔN THỨC (ANTI-SLEEP FOR RENDER FREE)
+// CƠ CHẾ GIỮ SERVER LUÔN THỨC
 // ═══════════════════════════════════════════════════════════
 setInterval(async () => {
     if (!APP_URL) return;
@@ -515,7 +447,7 @@ setInterval(async () => {
     } catch (e) {
         console.error('[Anti-Sleep] Lỗi tự động ping:', e.message);
     }
-}, 10 * 60 * 1000); // 10 phút ping một lần để giữ Render không ngủ đông
+}, 10 * 60 * 1000);
 
 // ═══════════════════════════════════════════════════════════
 // KHỞI ĐỘNG
