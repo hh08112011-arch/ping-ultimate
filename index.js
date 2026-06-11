@@ -19,98 +19,45 @@ const SESSION_TTL   = 30 * 60 * 1000;              // Session hết hạn sau 30
 const MAX_PER_DAY   = 3;                            // Tối đa 3 key/ngày/user
 
 // ═══════════════════════════════════════════════════════════
-// FIREBASE ADMIN SDK (ĐÃ ĐƯỢC NÂNG CẤP CHỐNG LỖI CHỮ KÝ JWT)
+// FIREBASE ADMIN SDK (ĐÃ CẬP NHẬT ĐỂ ĐỌC ĐÚNG BIẾN RENDER)
 // ═══════════════════════════════════════════════════════════
 let db;
-
-function initFirebase() {
+try {
     let serviceAccount;
 
-    // --- Cách 1: FIREBASE_SERVICE_ACCOUNT_JSON (ưu tiên) ---
+    // Kiểm tra xem bạn có cài đặt biến JSON tổng trên Render không
     if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-        try {
-            serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-            console.log('[Firebase] Dùng FIREBASE_SERVICE_ACCOUNT_JSON');
-            
-            // 👉 NÂNG CẤP BẢO VỆ: Tự động dọn dẹp lỗi xuống dòng của khóa bí mật
-            if (serviceAccount.private_key) {
-                serviceAccount.private_key = serviceAccount.private_key
-                    .replace(/\\n/g, '\n')
-                    .replace(/\r\n/g, '\n');
-            }
-        } catch (parseErr) {
-            console.error('[Firebase] FIREBASE_SERVICE_ACCOUNT_JSON không phải JSON hợp lệ:', parseErr.message);
-            console.error('[Firebase] Hãy chắc chắn copy NGUYÊN file JSON, không chỉnh sửa gì.');
-            process.exit(1);
+        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+        
+        // Tự động sửa lỗi ký tự xuống dòng sinh ra bởi Render
+        if (serviceAccount.private_key) {
+            serviceAccount.private_key = serviceAccount.private_key
+                .replace(/\\n/g, '\n')
+                .replace(/\r\n/g, '\n');
         }
-    }
-
-    // --- Cách 2: 3 biến riêng lẻ ---
-    else {
-        const projectId   = process.env.FIREBASE_PROJECT_ID;
-        const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-        let   privateKey  = process.env.FIREBASE_PRIVATE_KEY || '';
-
-        // Kiểm tra biến bắt buộc
-        const missing = [];
-        if (!projectId)   missing.push('FIREBASE_PROJECT_ID');
-        if (!clientEmail) missing.push('FIREBASE_CLIENT_EMAIL');
-        if (!privateKey)  missing.push('FIREBASE_PRIVATE_KEY');
-        if (missing.length > 0) {
-            console.error('[Firebase] Thiếu các biến môi trường sau:');
-            missing.forEach(v => console.error(`  ❌ ${v}`));
-            console.error('\n👉 Giải pháp dễ nhất: Thêm biến FIREBASE_SERVICE_ACCOUNT_JSON');
-            console.error('   và paste toàn bộ nội dung file JSON service account vào đó.');
-            process.exit(1);
-        }
-
-        // Xử lý private key: chấp nhận cả literal \\n lẫn newline thật
-        privateKey = privateKey
-            .replace(/\\n/g, '\n')   // literal \n → newline thật
-            .replace(/\r\n/g, '\n'); // Windows line endings
-
-        // Nếu không có BEGIN PRIVATE KEY → sai format
-        if (!privateKey.includes('BEGIN')) {
-            console.error('[Firebase] FIREBASE_PRIVATE_KEY không hợp lệ.');
-            console.error('   Phải chứa: -----BEGIN RSA PRIVATE KEY----- ... -----END RSA PRIVATE KEY-----');
-            console.error('   👉 Khuyến nghị: Dùng FIREBASE_SERVICE_ACCOUNT_JSON thay thế.');
-            process.exit(1);
-        }
-
+        console.log('[Firebase] Đang khởi tạo bằng biến FIREBASE_SERVICE_ACCOUNT_JSON...');
+    } else {
+        // Phương án dự phòng nếu bạn dùng các biến môi trường lẻ
         serviceAccount = {
-            type:          'service_account',
-            project_id:    projectId,
-            client_email:  clientEmail,
-            private_key:   privateKey,
+            projectId:   process.env.FIREBASE_PROJECT_ID,
+            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+            privateKey:  (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
         };
-        console.log('[Firebase] Dùng biến riêng lẻ, project_id =', projectId);
+        console.log('[Firebase] Đang khởi tạo bằng các biến môi trường đơn lẻ...');
     }
 
-    // Kiểm tra databaseURL
-    const databaseURL = process.env.FIREBASE_DATABASE_URL;
-    if (!databaseURL) {
-        console.error('[Firebase] Thiếu FIREBASE_DATABASE_URL');
-        console.error('   Ví dụ: https://TEN-PROJECT-default-rtdb.asia-southeast1.firebasedatabase.app');
-        process.exit(1);
-    }
+    const firebaseConfig = {
+        credential: admin.credential.cert(serviceAccount),
+        databaseURL: process.env.FIREBASE_DATABASE_URL,
+    };
 
-    try {
-        if (!admin.apps.length) {
-            admin.initializeApp({
-                credential: admin.credential.cert(serviceAccount),
-                databaseURL,
-            });
-        }
-        const dbRef = admin.database();
-        console.log('[Firebase] ✅ Kết nối thành công! Project:', serviceAccount.project_id);
-        return dbRef;
-    } catch (e) {
-        console.error('[Firebase] Lỗi initializeApp:', e.message);
-        process.exit(1);
-    }
+    if (!admin.apps.length) admin.initializeApp(firebaseConfig);
+    db = admin.database();
+    console.log('[Firebase] ✅ Kết nối cơ sở dữ liệu thành công!');
+} catch (e) {
+    console.error('[Firebase] ❌ Lỗi nghiêm trọng khi khởi tạo:', e.message);
+    process.exit(1);
 }
-
-db = initFirebase();
 
 // ═══════════════════════════════════════════════════════════
 // ĐỌC DANH SÁCH LINK TỪ FILE
@@ -304,7 +251,6 @@ app.get('/go', async (req, res) => {
 app.get('/verify', async (req, res) => {
     const { t: token, l: indexStr } = req.query;
 
-    // Nếu không có token → hiện trang hướng dẫn
     if (!token) {
         return res.send(`
         <html><head><meta charset="utf-8"><title>Xác Nhận</title>
@@ -348,28 +294,21 @@ app.get('/verify', async (req, res) => {
             </body></html>`);
         }
 
-        // Đánh dấu link này đã hoàn thành
         const mask = [...session.completedMask];
-        if (mask[index]) {
-            // Link này đã được xác nhận rồi
-        } else {
+        if (!mask[index]) {
             mask[index] = true;
             await updateSession(token, { completedMask: mask });
 
-            // Ghi vào lịch sử completed_links của user
             const linkHash = hashLink(session.links[index]);
             await db.ref(`bot_users/${session.telegramId}/completed_links/${linkHash}`).set(Date.now());
         }
 
-        // Kiểm tra tất cả link đã hoàn thành chưa
         const needed    = LINKS_NEEDED[session.type];
         const doneCount = mask.filter(Boolean).length;
 
         if (doneCount >= needed) {
-            // ✅ Đủ điều kiện → cấp key
             const { keyCode, hours } = await issueKey(session.telegramId, session.type, token);
 
-            // Gửi key vào Telegram
             try {
                 await bot.telegram.sendMessage(
                     session.telegramId,
@@ -394,7 +333,6 @@ app.get('/verify', async (req, res) => {
             <p style="color:#64748b;font-size:13px;">Đang chuyển về bot trong 3 giây...</p>
             </body></html>`);
         } else {
-            // Chưa đủ link (chỉ xảy ra với /24h khi mới vượt 1 link)
             const remaining = needed - doneCount;
             return res.send(`
             <html><head><meta charset="utf-8">
@@ -426,9 +364,6 @@ if (!BOT_TOKEN) {
 }
 const bot = new Telegraf(BOT_TOKEN);
 
-// ─────────────────────────────────────────────────────────
-// Xử lý lệnh /start
-// ─────────────────────────────────────────────────────────
 bot.start((ctx) => {
     const name = ctx.from.first_name || 'bạn';
     ctx.reply(
@@ -442,28 +377,30 @@ bot.start((ctx) => {
     );
 });
 
-// ─────────────────────────────────────────────────────────
-// Xử lý /status
-// ─────────────────────────────────────────────────────────
 bot.command('status', async (ctx) => {
-    const uid  = ctx.from.id;
-    const user = await getUser(uid);
-    const now  = Date.now();
+    try {
+        const uid  = ctx.from.id;
+        const user = await getUser(uid);
+        const now  = Date.now();
 
-    if (user.activeKey && user.activeKeyExpiry && now < user.activeKeyExpiry) {
-        const remaining = ((user.activeKeyExpiry - now) / 3600000).toFixed(1);
-        return ctx.reply(
-            `✅ *Trạng thái Key*\n\n` +
-            `🔑 Key: \`${user.activeKey}\`\n` +
-            `⏳ Còn lại: ~${remaining} giờ`,
-            { parse_mode: 'Markdown' }
-        );
+        if (user.activeKey && user.activeKeyExpiry && now < user.activeKeyExpiry) {
+            const remaining = ((user.activeKeyExpiry - now) / 3600000).toFixed(1);
+            return ctx.reply(
+                `✅ *Trạng thái Key*\n\n` +
+                `🔑 Key: \`${user.activeKey}\`\n` +
+                `⏳ Còn lại: ~${remaining} giờ`,
+                { parse_mode: 'Markdown' }
+            );
+        }
+        return ctx.reply('❌ Bạn không có key đang hoạt động.\n\nDùng /12h hoặc /24h để nhận key mới.');
+    } catch (err) {
+        console.error('[Bot] Lỗi lệnh /status:', err.message);
+        ctx.reply('❌ Đã xảy ra lỗi khi kiểm tra trạng thái Firebase. Thử lại sau!');
     }
-    return ctx.reply('❌ Bạn không có key đang hoạt động.\n\nDùng /12h hoặc /24h để nhận key mới.');
 });
 
 // ─────────────────────────────────────────────────────────
-// Hàm xử lý chung cho /12h và /24h (Đã tối ưu hóa hoàn chỉnh)
+// Hàm xử lý chung cho /12h và /24h (ĐÃ BỌC TRY-CATCH AN TOÀN)
 // ─────────────────────────────────────────────────────────
 async function handleKeyRequest(ctx, type) {
     try {
@@ -493,17 +430,14 @@ async function handleKeyRequest(ctx, type) {
 
         console.log(`[Bot] Số lượng link User chưa vượt: ${unvisited.length}/${allLinks.length}`);
 
-        // KIỂM TRA ĐỦ SỐ LƯỢNG LINK CHO LỆNH
         if (unvisited.length < needed) {
             return ctx.reply(
-                `⚠️ *Không đủ link để tạo nhiệm vụ ${type.toUpperCase()}!*\n\n` +
-                `Yêu cầu cần ít nhất *${needed}* link mới chưa từng vượt, nhưng hiện tại hệ thống chỉ còn *${unvisited.length}* link mới dành cho bạn.\n\n` +
-                `👉 Hãy thử lệnh còn lại hoặc báo Admin cập nhật thêm link vào file nhé!`,
+                `⚠️ *Không đủ nhiệm vụ!*\n\nHệ thống cần ít nhất *${needed}* link mới chưa vượt, nhưng bạn đã vượt gần hết rồi.\n👉 Vui lòng báo Admin thêm link mới vào hệ thống nhé!`,
                 { parse_mode: 'Markdown' }
             );
         }
 
-        // Chọn ngẫu nhiên `needed` link từ danh sách chưa vượt
+        // Chọn ngẫu nhiên link từ danh sách chưa vượt
         const shuffled  = [...unvisited].sort(() => Math.random() - 0.5);
         const chosen    = shuffled.slice(0, needed);
 
@@ -514,7 +448,6 @@ async function handleKeyRequest(ctx, type) {
         // Lưu pending session vào user
         await db.ref(`bot_users/${uid}/pendingSession`).set(token);
 
-        // Soạn nội dung tin nhắn
         let msg = `🔑 *Nhận Key ${type.toUpperCase()} — ${hours} Giờ*\n\n`;
         msg += `📋 Bạn cần vượt *${needed} link* sau:\n\n`;
 
@@ -528,26 +461,16 @@ async function handleKeyRequest(ctx, type) {
         msg += `_Lưu ý: Mỗi link chỉ được vượt 1 lần._`;
 
         await ctx.reply(msg, { parse_mode: 'Markdown' });
-        console.log(`[Bot] Đã gửi thành công chuỗi link nhiệm vụ /${type} cho người dùng.`);
 
     } catch (error) {
-        console.error(`❌ [Lỗi Hệ Thống] Xảy ra lỗi tại lệnh /${type}:`, error);
-        return ctx.reply(
-            `❌ *Đã xảy ra lỗi xử lý nội bộ!*\n\n` +
-            `Hệ thống không thể xử lý lệnh /${type} vào lúc này.\n` +
-            `👉 *Nguyên nhân có thể do:* Firebase nghẽn kết nối hoặc chứng chỉ bảo mật lỗi.\n` +
-            `Vui lòng liên hệ Admin hoặc thử lại sau ít phút!`,
-            { parse_mode: 'Markdown' }
-        );
+        console.error(`❌ [Lỗi Lệnh /${type}]:`, error.message);
+        ctx.reply('❌ Hệ thống gặp sự cố khi xử lý dữ liệu Firebase. Vui lòng thử lại sau hoặc báo Admin!');
     }
 }
 
 bot.command('12h', (ctx) => handleKeyRequest(ctx, '12h'));
 bot.command('24h', (ctx) => handleKeyRequest(ctx, '24h'));
 
-// ─────────────────────────────────────────────────────────
-// Xử lý tin nhắn không hợp lệ
-// ─────────────────────────────────────────────────────────
 bot.on('text', (ctx) => {
     ctx.reply(
         '❓ Lệnh không được nhận ra.\n\nDùng:\n🔹 /12h — Key 12 giờ\n🔹 /24h — Key 24 giờ\n🔹 /status — Kiểm tra key'
@@ -565,9 +488,9 @@ setInterval(async () => {
             console.log(`[Anti-Sleep] Tự động ping thành công lúc: ${new Date().toLocaleTimeString()}`);
         }
     } catch (e) {
-        console.error('[Anti-Sleep] Lỗi khi tự động ping hệ thống:', e.message);
+        console.error('[Anti-Sleep] Lỗi tự động ping:', e.message);
     }
-}, 10 * 60 * 1000); // 10 phút ping một lần để giữ Render không chuyển sang Sleep mode
+}, 10 * 60 * 1000); // 10 phút ping một lần để giữ Render không ngủ đông
 
 // ═══════════════════════════════════════════════════════════
 // KHỞI ĐỘNG
@@ -584,6 +507,5 @@ app.listen(PORT, async () => {
     }
 });
 
-// Graceful shutdown
 process.once('SIGINT',  () => { bot.stop('SIGINT');  });
 process.once('SIGTERM', () => { bot.stop('SIGTERM'); });
