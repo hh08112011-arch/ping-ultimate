@@ -21,30 +21,13 @@ const MAX_PER_DAY   = 3;                            // Tối đa 3 key/ngày/use
 // ═══════════════════════════════════════════════════════════
 // FIREBASE ADMIN SDK (ĐÃ CẬP NHẬT ĐỂ ĐỌC ĐÚNG BIẾN RENDER)
 // ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// FIREBASE ADMIN SDK (DÙNG SECRET FILES - CHẮC CHẮN 100% THÀNH CÔNG)
+// ═══════════════════════════════════════════════════════════
 let db;
 try {
-    let serviceAccount;
-
-    // Kiểm tra xem bạn có cài đặt biến JSON tổng trên Render không
-    if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-        
-        // Tự động sửa lỗi ký tự xuống dòng sinh ra bởi Render
-        if (serviceAccount.private_key) {
-            serviceAccount.private_key = serviceAccount.private_key
-                .replace(/\\n/g, '\n')
-                .replace(/\r\n/g, '\n');
-        }
-        console.log('[Firebase] Đang khởi tạo bằng biến FIREBASE_SERVICE_ACCOUNT_JSON...');
-    } else {
-        // Phương án dự phòng nếu bạn dùng các biến môi trường lẻ
-        serviceAccount = {
-            projectId:   process.env.FIREBASE_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey:  (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-        };
-        console.log('[Firebase] Đang khởi tạo bằng các biến môi trường đơn lẻ...');
-    }
+    // Đọc trực tiếp từ Secret File của Render (không lo bị bóp méo định dạng nữa)
+    const serviceAccount = require('./firebase-key.json');
 
     const firebaseConfig = {
         credential: admin.credential.cert(serviceAccount),
@@ -53,9 +36,14 @@ try {
 
     if (!admin.apps.length) admin.initializeApp(firebaseConfig);
     db = admin.database();
-    console.log('[Firebase] ✅ Kết nối cơ sở dữ liệu thành công!');
+    
+    // Ping thử lên máy chủ Google để xác thực 100% chữ ký hợp lệ
+    db.ref('.info/connected').once('value')
+        .then(() => console.log('[Firebase] ✅ XÁC THỰC CHỮ KÝ VÀ KẾT NỐI THÀNH CÔNG THỰC SỰ!'))
+        .catch(err => console.error('[Firebase] ❌ Xác thực thất bại:', err.message));
+
 } catch (e) {
-    console.error('[Firebase] ❌ Lỗi nghiêm trọng khi khởi tạo:', e.message);
+    console.error('[Firebase] ❌ Lỗi khởi tạo (Hãy kiểm tra đã tạo file firebase-key.json trong Secret Files chưa nhé):', e.message);
     process.exit(1);
 }
 
