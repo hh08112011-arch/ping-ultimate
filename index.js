@@ -19,7 +19,7 @@ const SESSION_TTL   = 30 * 60 * 1000;              // Session hết hạn sau 30
 const MAX_PER_DAY   = 3;                            // Tối đa 3 key/ngày/user
 
 // ═══════════════════════════════════════════════════════════
-// FIREBASE ADMIN SDK
+// FIREBASE ADMIN SDK (ĐÃ ĐƯỢC NÂNG CẤP CHỐNG LỖI CHỮ KÝ JWT)
 // ═══════════════════════════════════════════════════════════
 let db;
 
@@ -31,6 +31,13 @@ function initFirebase() {
         try {
             serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
             console.log('[Firebase] Dùng FIREBASE_SERVICE_ACCOUNT_JSON');
+            
+            // 👉 NÂNG CẤP BẢO VỆ: Tự động dọn dẹp lỗi xuống dòng của khóa bí mật
+            if (serviceAccount.private_key) {
+                serviceAccount.private_key = serviceAccount.private_key
+                    .replace(/\\n/g, '\n')
+                    .replace(/\r\n/g, '\n');
+            }
         } catch (parseErr) {
             console.error('[Firebase] FIREBASE_SERVICE_ACCOUNT_JSON không phải JSON hợp lệ:', parseErr.message);
             console.error('[Firebase] Hãy chắc chắn copy NGUYÊN file JSON, không chỉnh sửa gì.');
@@ -99,8 +106,6 @@ function initFirebase() {
         return dbRef;
     } catch (e) {
         console.error('[Firebase] Lỗi initializeApp:', e.message);
-        console.error('[Firebase] serviceAccount.project_id =', serviceAccount.project_id);
-        console.error('[Firebase] serviceAccount.client_email =', serviceAccount.client_email);
         process.exit(1);
     }
 }
@@ -458,7 +463,7 @@ bot.command('status', async (ctx) => {
 });
 
 // ─────────────────────────────────────────────────────────
-// Hàm xử lý chung cho /12h và /24h (ĐÃ ĐƯỢC FIX LỖI IM LẶNG)
+// Hàm xử lý chung cho /12h và /24h (Đã tối ưu hóa hoàn chỉnh)
 // ─────────────────────────────────────────────────────────
 async function handleKeyRequest(ctx, type) {
     try {
@@ -526,14 +531,11 @@ async function handleKeyRequest(ctx, type) {
         console.log(`[Bot] Đã gửi thành công chuỗi link nhiệm vụ /${type} cho người dùng.`);
 
     } catch (error) {
-        // Ghi nhận lỗi chi tiết ra hệ thống log của Render
         console.error(`❌ [Lỗi Hệ Thống] Xảy ra lỗi tại lệnh /${type}:`, error);
-        
-        // Luôn trả lời người dùng, tránh tình trạng bot bị "im lặng" vô thời hạn
         return ctx.reply(
             `❌ *Đã xảy ra lỗi xử lý nội bộ!*\n\n` +
             `Hệ thống không thể xử lý lệnh /${type} vào lúc này.\n` +
-            `👉 *Nguyên nhân có thể do:* Firebase nghẽn kết nối hoặc định dạng link lỗi.\n` +
+            `👉 *Nguyên nhân có thể do:* Firebase nghẽn kết nối hoặc chứng chỉ bảo mật lỗi.\n` +
             `Vui lòng liên hệ Admin hoặc thử lại sau ít phút!`,
             { parse_mode: 'Markdown' }
         );
