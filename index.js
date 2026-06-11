@@ -21,12 +21,6 @@ const MAX_PER_DAY   = 3;                            // Tối đa 3 key/ngày/use
 // ═══════════════════════════════════════════════════════════
 // FIREBASE ADMIN SDK
 // ═══════════════════════════════════════════════════════════
-// Hỗ trợ 2 cách cấu hình:
-//   Cách 1 (KHUYẾN NGHỊ): Paste toàn bộ nội dung file JSON service account
-//                          vào biến FIREBASE_SERVICE_ACCOUNT_JSON
-//   Cách 2 (cũ):           Dùng 3 biến riêng lẻ FIREBASE_PROJECT_ID,
-//                          FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY
-// ═══════════════════════════════════════════════════════════
 let db;
 
 function initFirebase() {
@@ -464,62 +458,86 @@ bot.command('status', async (ctx) => {
 });
 
 // ─────────────────────────────────────────────────────────
-// Hàm xử lý chung cho /12h và /24h
+// Hàm xử lý chung cho /12h và /24h (ĐÃ ĐƯỢC FIX LỖI IM LẶNG)
 // ─────────────────────────────────────────────────────────
 async function handleKeyRequest(ctx, type) {
-    const uid      = ctx.from.id;
-    const allLinks = loadLinks();
+    try {
+        const uid      = ctx.from.id;
+        const allLinks = loadLinks();
 
-    if (allLinks.length === 0) {
-        return ctx.reply('⚠️ Danh sách link trống. Vui lòng liên hệ admin!');
-    }
+        console.log(`[Bot] Nhận yêu cầu /${type} từ User ID: ${uid}`);
+        console.log(`[Bot] Tổng số link đọc được từ file: ${allLinks.length}`);
 
-    // Kiểm tra cooldown + chống gian lận
-    const check = await checkCooldown(uid, type);
-    if (check.blocked) {
-        return ctx.reply(`🚫 ${check.reason}`);
-    }
+        if (allLinks.length === 0) {
+            return ctx.reply('⚠️ Danh sách link trống. Vui lòng liên hệ admin!');
+        }
 
-    const needed  = LINKS_NEEDED[type];
-    const hours   = KEY_HOURS[type];
-    const user    = await getUser(uid);
+        // Kiểm tra cooldown + chống gian lận
+        const check = await checkCooldown(uid, type);
+        if (check.blocked) {
+            return ctx.reply(`🚫 ${check.reason}`);
+        }
 
-    // Lọc link chưa từng vượt
-    const completedLinks = user.completed_links || {};
-    const unvisited = allLinks.filter(url => !completedLinks[hashLink(url)]);
+        const needed  = LINKS_NEEDED[type];
+        const hours   = KEY_HOURS[type];
+        const user    = await getUser(uid);
 
-    if (unvisited.length < needed) {
+        // Lọc link chưa từng vượt
+        const completedLinks = user.completed_links || {};
+        const unvisited = allLinks.filter(url => !completedLinks[hashLink(url)]);
+
+        console.log(`[Bot] Số lượng link User chưa vượt: ${unvisited.length}/${allLinks.length}`);
+
+        // KIỂM TRA ĐỦ SỐ LƯỢNG LINK CHO LỆNH
+        if (unvisited.length < needed) {
+            return ctx.reply(
+                `⚠️ *Không đủ link để tạo nhiệm vụ ${type.toUpperCase()}!*\n\n` +
+                `Yêu cầu cần ít nhất *${needed}* link mới chưa từng vượt, nhưng hiện tại hệ thống chỉ còn *${unvisited.length}* link mới dành cho bạn.\n\n` +
+                `👉 Hãy thử lệnh còn lại hoặc báo Admin cập nhật thêm link vào file nhé!`,
+                { parse_mode: 'Markdown' }
+            );
+        }
+
+        // Chọn ngẫu nhiên `needed` link từ danh sách chưa vượt
+        const shuffled  = [...unvisited].sort(() => Math.random() - 0.5);
+        const chosen    = shuffled.slice(0, needed);
+
+        // Tạo session token
+        const token = crypto.randomBytes(16).toString('hex');
+        await createSession(token, uid, type, chosen);
+
+        // Lưu pending session vào user
+        await db.ref(`bot_users/${uid}/pendingSession`).set(token);
+
+        // Soạn nội dung tin nhắn
+        let msg = `🔑 *Nhận Key ${type.toUpperCase()} — ${hours} Giờ*\n\n`;
+        msg += `📋 Bạn cần vượt *${needed} link* sau:\n\n`;
+
+        chosen.forEach((url, i) => {
+            const goUrl = `${APP_URL}/go?t=${token}&l=${i}`;
+            msg += `🔗 *Link ${i + 1}:*\n${goUrl}\n\n`;
+        });
+
+        msg += `⏰ Phiên hết hạn sau *30 phút*.\n`;
+        msg += `✅ Sau khi vượt xong tất cả link, key sẽ tự động gửi về đây.\n\n`;
+        msg += `_Lưu ý: Mỗi link chỉ được vượt 1 lần._`;
+
+        await ctx.reply(msg, { parse_mode: 'Markdown' });
+        console.log(`[Bot] Đã gửi thành công chuỗi link nhiệm vụ /${type} cho người dùng.`);
+
+    } catch (error) {
+        // Ghi nhận lỗi chi tiết ra hệ thống log của Render
+        console.error(`❌ [Lỗi Hệ Thống] Xảy ra lỗi tại lệnh /${type}:`, error);
+        
+        // Luôn trả lời người dùng, tránh tình trạng bot bị "im lặng" vô thời hạn
         return ctx.reply(
-            `⚠️ Bạn đã vượt hết tất cả link trong danh sách!\n\n` +
-            `Admin cần thêm link mới. Vui lòng liên hệ admin để được hỗ trợ.`
+            `❌ *Đã xảy ra lỗi xử lý nội bộ!*\n\n` +
+            `Hệ thống không thể xử lý lệnh /${type} vào lúc này.\n` +
+            `👉 *Nguyên nhân có thể do:* Firebase nghẽn kết nối hoặc định dạng link lỗi.\n` +
+            `Vui lòng liên hệ Admin hoặc thử lại sau ít phút!`,
+            { parse_mode: 'Markdown' }
         );
     }
-
-    // Chọn ngẫu nhiên `needed` link từ danh sách chưa vượt
-    const shuffled  = [...unvisited].sort(() => Math.random() - 0.5);
-    const chosen    = shuffled.slice(0, needed);
-
-    // Tạo session token
-    const token = crypto.randomBytes(16).toString('hex');
-    await createSession(token, uid, type, chosen);
-
-    // Lưu pending session vào user
-    await db.ref(`bot_users/${uid}/pendingSession`).set(token);
-
-    // Soạn nội dung tin nhắn
-    let msg = `🔑 *Nhận Key ${type.toUpperCase()} — ${hours} Giờ*\n\n`;
-    msg += `📋 Bạn cần vượt *${needed} link* sau:\n\n`;
-
-    chosen.forEach((url, i) => {
-        const goUrl = `${APP_URL}/go?t=${token}&l=${i}`;
-        msg += `🔗 *Link ${i + 1}:*\n${goUrl}\n\n`;
-    });
-
-    msg += `⏰ Phiên hết hạn sau *30 phút*.\n`;
-    msg += `✅ Sau khi vượt xong tất cả link, key sẽ tự động gửi về đây.\n\n`;
-    msg += `_Lưu ý: Mỗi link chỉ được vượt 1 lần._`;
-
-    await ctx.reply(msg, { parse_mode: 'Markdown' });
 }
 
 bot.command('12h', (ctx) => handleKeyRequest(ctx, '12h'));
@@ -533,6 +551,21 @@ bot.on('text', (ctx) => {
         '❓ Lệnh không được nhận ra.\n\nDùng:\n🔹 /12h — Key 12 giờ\n🔹 /24h — Key 24 giờ\n🔹 /status — Kiểm tra key'
     );
 });
+
+// ═══════════════════════════════════════════════════════════
+// CƠ CHẾ GIỮ SERVER LUÔN THỨC (ANTI-SLEEP FOR RENDER FREE)
+// ═══════════════════════════════════════════════════════════
+setInterval(async () => {
+    if (!APP_URL) return;
+    try {
+        const response = await fetch(APP_URL);
+        if (response.ok) {
+            console.log(`[Anti-Sleep] Tự động ping thành công lúc: ${new Date().toLocaleTimeString()}`);
+        }
+    } catch (e) {
+        console.error('[Anti-Sleep] Lỗi khi tự động ping hệ thống:', e.message);
+    }
+}, 10 * 60 * 1000); // 10 phút ping một lần để giữ Render không chuyển sang Sleep mode
 
 // ═══════════════════════════════════════════════════════════
 // KHỞI ĐỘNG
